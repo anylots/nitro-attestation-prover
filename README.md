@@ -1,10 +1,10 @@
 # Standalone Nitro attestation prover
 
 This workspace provides native verification of the bundled AWS Nitro
-attestation as a test and local RISC Zero Groth16 proving as the main binary.
-The required verifier source, attestation fixture, recursion archive, and
-encoded R0BF guest program are all included, so it does not depend on the Base
-monorepo.
+attestation as a test and local SP1 Groth16 proving as the main binary.
+The required verifier source, attestation fixture, and SP1 guest ELF
+(`verifier/elf/nitro-verifier-guest`) are all included, so it does not depend
+on the Base monorepo.
 
 Run the fast host verification test:
 
@@ -15,15 +15,16 @@ cargo test --features prove verifies_attestation_on_host -- --nocapture
 Run the local Groth16 prover:
 
 ```sh
-RUSTFLAGS="-C target-cpu=native" \
-RUST_LOG="risc0_zkvm=info,risc0_zkp=debug,risc0_circuit_rv32im=info,risc0_circuit_recursion=info" \
-RISC0_PROVER=local \
-RECURSION_SRC_PATH="$PWD/744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849.zip" \
-NITRO_GUEST_PROGRAM="$PWD/nitro-verifier-guest.r0bf" \
-cargo run --profile maxperf \
+RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+RUST_LOG="info,sp1_sdk=info,sp1_prover=info" \
+cargo run --release \
   -p base-proof-tee-nitro-attestation-prover \
   --features prove
 ```
+
+The prover loads the bundled guest ELF from `verifier/elf/nitro-verifier-guest`;
+set `NITRO_GUEST_PROGRAM=/path/to/guest-elf` to override it. On the first run
+SP1 downloads the Groth16 circuit artifacts, which takes extra time.
 
 Set `NITRO_ATTESTATION=/path/to/raw-attestation.bin` to replace the bundled
 fixture.
@@ -81,3 +82,63 @@ docker run --rm \
   --env NITRO_ATTESTATION=/data/attestation.bin \
   nitro-attestation-prover
 ```
+
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  MEMORY_LIMIT=12589934592 \
+  SHARD_SIZE=524288 \
+  ELEMENT_THRESHOLD=87108864 \
+  HEIGHT_THRESHOLD=624288 \
+  TRACE_CHUNK_SLOTS=2 \
+  RAYON_NUM_THREADS=8 \
+  SP1_WORKER_NUM_SPLICING_WORKERS=1 \
+  SP1_WORKER_SPLICING_BUFFER_SIZE=1 \
+  SP1_WORKER_NUMBER_OF_SEND_SPLICE_WORKERS_PER_SPLICE=1 \
+  SP1_WORKER_SEND_SPLICE_INPUT_BUFFER_SIZE_PER_SPLICE=1 \
+  SP1_WORKER_GLOBAL_MEMORY_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_CORE_WORKERS=2 \
+  SP1_WORKER_CORE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_SETUP_WORKERS=1 \
+  SP1_WORKER_SETUP_BUFFER_SIZE=1 \
+  SP1_WORKER_NORMALIZE_PROGRAM_CACHE_SIZE=1 \
+  SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS=1 \
+  SP1_WORKER_PREPARE_REDUCE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS=2 \
+  SP1_WORKER_RECURSION_EXECUTOR_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_PROVER_WORKERS=2 \
+  SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_DEFERRED_WORKERS=1 \
+  SP1_WORKER_DEFERRED_BUFFER_SIZE=1 \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
+
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  MEMORY_LIMIT=12589934592 \
+  SHARD_SIZE=524288 \
+  ELEMENT_THRESHOLD=77108864 \
+  HEIGHT_THRESHOLD=624288 \
+  TRACE_CHUNK_SLOTS=1 \
+  RAYON_NUM_THREADS=8 \
+  SP1_WORKER_NUM_SPLICING_WORKERS=1 \
+  SP1_WORKER_SPLICING_BUFFER_SIZE=1 \
+  SP1_WORKER_NUMBER_OF_SEND_SPLICE_WORKERS_PER_SPLICE=1 \
+  SP1_WORKER_SEND_SPLICE_INPUT_BUFFER_SIZE_PER_SPLICE=1 \
+  SP1_WORKER_GLOBAL_MEMORY_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_CORE_WORKERS=1 \
+  SP1_WORKER_CORE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_SETUP_WORKERS=1 \
+  SP1_WORKER_SETUP_BUFFER_SIZE=1 \
+  SP1_WORKER_NORMALIZE_PROGRAM_CACHE_SIZE=1 \
+  SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS=1 \
+  SP1_WORKER_PREPARE_REDUCE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS=1 \
+  SP1_WORKER_RECURSION_EXECUTOR_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_PROVER_WORKERS=1 \
+  SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_DEFERRED_WORKERS=1 \
+  SP1_WORKER_DEFERRED_BUFFER_SIZE=1 \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove

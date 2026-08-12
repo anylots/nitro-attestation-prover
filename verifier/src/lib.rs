@@ -1,6 +1,11 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
+// Only the guest binary uses `sp1-zkvm`; mark it used so the lint above stays
+// quiet when compiling this lib for the zkvm target.
+#[cfg(target_os = "zkvm")]
+use sp1_zkvm as _;
+
 mod attestation;
 pub use attestation::{AttestationDocument, AttestationReport, CoseSign1};
 

@@ -31,10 +31,8 @@ RUN cargo fetch --locked
 COPY src/ src/
 COPY verifier/ verifier/
 COPY README.md ./
-COPY 744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849.zip ./
 
-ENV RUSTFLAGS="-C target-cpu=native" \
-    RECURSION_SRC_PATH=/build/744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849.zip
+ENV RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f"
 
 RUN --mount=type=cache,id=nitro-prover-target,target=/build/target,sharing=locked \
     cargo build --locked --profile maxperf \
@@ -60,11 +58,10 @@ RUN apt-get -o Acquire::Retries=3 update \
 WORKDIR /app
 
 COPY --from=builder /out/nitro-attestation-prover /usr/local/bin/nitro-attestation-prover
-COPY --chown=prover:prover nitro-verifier-guest.r0bf /app/nitro-verifier-guest.r0bf
+COPY --chown=prover:prover verifier/elf/nitro-verifier-guest /app/nitro-verifier-guest
 
-ENV RUST_LOG="risc0_zkvm=info,risc0_zkp=debug,risc0_circuit_rv32im=info,risc0_circuit_recursion=info" \
-    RISC0_PROVER=local \
-    NITRO_GUEST_PROGRAM=/app/nitro-verifier-guest.r0bf
+ENV RUST_LOG="info,sp1_sdk=info,sp1_prover=info" \
+    NITRO_GUEST_PROGRAM=/app/nitro-verifier-guest
 
 USER prover
 
