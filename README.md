@@ -1,58 +1,13 @@
 # Standalone Nitro attestation prover
 
-This workspace provides native verification of the bundled AWS Nitro
-attestation as a test and local SP1 Groth16 proving as the main binary.
-The required verifier source, attestation fixture, and SP1 guest ELF
-(`verifier/elf/nitro-verifier-guest`) are all included, so it does not depend
-on the Base monorepo.
-
-Run the fast host verification test:
-
-```sh
-cargo test --features prove verifies_attestation_on_host -- --nocapture
-```
-
 Run the local Groth16 prover:
 
 ```sh
-RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
-RUST_LOG="info,sp1_sdk=info,sp1_prover=info" \
-cargo run --release \
-  -p base-proof-tee-nitro-attestation-prover \
-  --features prove
-```
-
-The prover loads the bundled guest ELF from `verifier/elf/nitro-verifier-guest`;
-set `NITRO_GUEST_PROGRAM=/path/to/guest-elf` to override it. On the first run
-SP1 downloads the Groth16 circuit artifacts, which takes extra time.
-
-Set `NITRO_ATTESTATION=/path/to/raw-attestation.bin` to replace the bundled
-fixture.
-
-### Run after disconnecting SSH
-
-Use the helper scripts to keep the local prover running after the SSH session
-ends:
-
-```sh
-./script/start-prover.sh
-tail -f .run/prover.log
-```
-
-The start script records the process ID in `.run/prover.pid`. Stop the prover
-gracefully with:
-
-```sh
-./script/stop-prover.sh
-```
-
-Environment variables can be supplied when starting it. For example, to use a
-custom attestation and log location:
-
-```sh
-NITRO_ATTESTATION=/path/to/raw-attestation.bin \
-LOG_FILE=/path/to/prover.log \
-./script/start-prover.sh
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
 ```
 
 ## Run with Docker (Ubuntu 24.04)
@@ -70,10 +25,12 @@ docker build \
   --file Dockerfile.sp1-prover \
   --tag nitro-attestation-prover \
   .
-docker run --rm nitro-attestation-prover
+docker run --shm-size=4g -e RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" --rm nitro-attestation-prover
 
 docker run -d \
   --name nitro-attestation-prover-run \
+  --shm-size=4g \
+  -e RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   nitro-attestation-prover
 
 docker logs -f nitro-attestation-prover-run
@@ -91,6 +48,9 @@ docker run --rm \
   nitro-attestation-prover
 ```
 
+
+## Hyperparameter Version 1
+```sh
   RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
   RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   MEMORY_LIMIT=12589934592 \
@@ -120,7 +80,9 @@ docker run --rm \
   cargo run --release \
     -p base-proof-tee-nitro-attestation-prover \
     --features prove
-
+```
+## Hyperparameter Version 2
+```sh
   RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
   RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   MEMORY_LIMIT=12589934592 \
@@ -150,10 +112,4 @@ docker run --rm \
   cargo run --release \
     -p base-proof-tee-nitro-attestation-prover \
     --features prove
-
-
-    RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
-  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
-  cargo run --release \
-    -p base-proof-tee-nitro-attestation-prover \
-    --features prove
+```

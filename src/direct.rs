@@ -7,6 +7,7 @@ use std::fmt;
 
 use alloy_primitives::Bytes;
 use base_proof_tee_nitro_verifier::VerifierInput;
+use base_proof_tee_nitro_verifier::{AttestationVerifier, VerificationResult};
 use sp1_sdk::{
     CpuProver, Elf, HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1ProvingKey,
     SP1Stdin,
@@ -85,6 +86,12 @@ impl AttestationProofProvider for DirectProver {
             trustedCertsPrefixLen: self.trusted_certs_prefix_len,
             attestationReport: Bytes::copy_from_slice(attestation_bytes),
         };
+
+        let journal = AttestationVerifier::verify(&input)
+            .expect("host verifier should accept the Nitro attestation");
+        assert_eq!(journal.result, VerificationResult::Success);
+        eprintln!("==========> attestation verified successfully on host");
+
         let mut stdin = SP1Stdin::new();
         stdin.write_vec(input.encode());
 
