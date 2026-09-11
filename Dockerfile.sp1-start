@@ -1,0 +1,31 @@
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get -o Acquire::Retries=5 update --fix-missing \
+    && apt-get -o Acquire::Retries=5 install --yes --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        libclang-dev \
+        libssl-dev \
+        llvm \
+        pkg-config \
+        wget \
+        protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CARGO_HOME=/root/.cargo
+RUN rustup install 1.95.0
+RUN rustup default 1.95.0
+RUN rustup component add llvm-tools rustc-dev --toolchain 1.95.0
+
+# Install Golang for native gnark
+RUN wget https://raw.githubusercontent.com/anylots/golangTemp/main/go1.24.0.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.24.0.linux-amd64.tar.gz
+RUN rm go1.24.0.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"

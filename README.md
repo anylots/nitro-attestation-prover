@@ -57,11 +57,19 @@ LOG_FILE=/path/to/prover.log \
 
 ## Run with Docker (Ubuntu 24.04)
 
-Build the image on the server so that `target-cpu=native` is optimized for the
-server CPU:
+Build the SP1 base image first, then build the prover image on the server so
+that `target-cpu=native` is optimized for the server CPU:
 
 ```sh
-docker build --tag nitro-attestation-prover .
+docker build \
+  --file Dockerfile.sp1-start \
+  --tag sp1-start \
+  .
+
+docker build \
+  --file Dockerfile.sp1-prover \
+  --tag nitro-attestation-prover \
+  .
 docker run --rm nitro-attestation-prover
 
 docker run -d \
@@ -139,6 +147,13 @@ docker run --rm \
   SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE=1 \
   SP1_WORKER_NUM_DEFERRED_WORKERS=1 \
   SP1_WORKER_DEFERRED_BUFFER_SIZE=1 \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
+
+
+    RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   cargo run --release \
     -p base-proof-tee-nitro-attestation-prover \
     --features prove

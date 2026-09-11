@@ -270,7 +270,7 @@ mod tests {
 
     #[rstest]
     fn verify_with_zero_trusted_prefix() {
-        let bytes = hex::decode(ATTESTATION_HEX).unwrap();
+        let bytes = hex::decode(ATTESTATION_HEX.trim()).unwrap();
         let input = VerifierInput {
             trustedCertsPrefixLen: 0,
             attestationReport: Bytes::copy_from_slice(&bytes),

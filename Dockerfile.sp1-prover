@@ -1,0 +1,17 @@
+FROM sp1-start:latest
+
+COPY . /app
+WORKDIR /app
+
+RUN RUST_LOG=info \
+    RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+    cargo build --release \
+        -p base-proof-tee-nitro-attestation-prover \
+        --features prove
+RUN cp \
+    target/release/base-proof-tee-nitro-attestation-prover \
+    ./nitro-attestation-prover
+
+ENV NITRO_GUEST_PROGRAM=/app/verifier/elf/nitro-verifier-guest
+
+CMD ["./nitro-attestation-prover"]

@@ -37,7 +37,11 @@ impl DirectProver {
             .await
             .map_err(|e| ProverError::Sp1(format!("failed to set up proving key: {e}")))?;
 
-        Ok(Self { client, pk, trusted_certs_prefix_len })
+        Ok(Self {
+            client,
+            pk,
+            trusted_certs_prefix_len,
+        })
     }
 
     /// Returns the verifying key hash (`bytes32`) of the guest program — the
@@ -116,8 +120,10 @@ mod tests {
     const TEST_ATTESTATION_HEX: &str = include_str!("../verifier/testdata/attestation.hex");
 
     /// Verifies the shared attestation directly on the host without generating a ZK proof.
+    /// cargo test verifies_attestation_on_host --nocapture
     #[test]
     fn verifies_attestation_on_host() {
+        println!("verifying Nitro attestation on host without ZK proof...");
         let input = VerifierInput {
             trustedCertsPrefixLen: DEFAULT_TRUSTED_PREFIX,
             attestationReport: Bytes::from(attestation_bytes()),

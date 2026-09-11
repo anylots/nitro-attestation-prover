@@ -28,5 +28,4 @@ rstest = "0.26.1"
 workspace = true
 
 [target.'cfg(target_os = "zkvm")'.dependencies]
-# Pinned to match the `cargo prove build --docker --tag v6.2.0` toolchain.
-sp1-zkvm = "=6.2.0"
+sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", branch = "main", optional = true }
