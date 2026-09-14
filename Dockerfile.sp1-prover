@@ -3,6 +3,8 @@ FROM sp1-start:latest
 COPY . /app
 WORKDIR /app
 
+ENV SP1_GNARK_FFI_GO_ENVS="GOPROXY=direct;GOSUMDB=off"
+
 RUN RUST_LOG=info \
     RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
     cargo build --release \
