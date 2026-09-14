@@ -19,14 +19,11 @@ if [[ -f "$PID_FILE" ]]; then
     rm -f -- "$PID_FILE"
 fi
 
-export RUSTFLAGS="${RUSTFLAGS:--C target-cpu=native}"
-export RUST_LOG="${RUST_LOG:-risc0_zkvm=info,risc0_zkp=debug,risc0_circuit_rv32im=info,risc0_circuit_recursion=info}"
-export RISC0_PROVER="${RISC0_PROVER:-local}"
-export RECURSION_SRC_PATH="${RECURSION_SRC_PATH:-$PROJECT_ROOT/744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849.zip}"
-export NITRO_GUEST_PROGRAM="${NITRO_GUEST_PROGRAM:-$PROJECT_ROOT/nitro-verifier-guest.r0bf}"
+export RUSTFLAGS="${RUSTFLAGS:--C target-cpu=native -C target-feature=+avx512f}"
+export RUST_LOG="${RUST_LOG:-info,sp1_sdk=info,sp1_prover=info}"
 
 cd -- "$PROJECT_ROOT"
-nohup setsid cargo run --profile maxperf \
+nohup setsid cargo run --release \
     -p base-proof-tee-nitro-attestation-prover \
     --features prove \
     </dev/null >>"$LOG_FILE" 2>&1 &

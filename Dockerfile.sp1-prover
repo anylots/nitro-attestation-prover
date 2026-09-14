@@ -1,0 +1,24 @@
+FROM sp1-start:latest
+
+COPY . /app
+WORKDIR /app
+
+RUN RUST_LOG=info \
+    RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+    cargo build --release \
+        -p base-proof-tee-nitro-attestation-prover \
+        --features prove
+RUN cp \
+    target/release/base-proof-tee-nitro-attestation-prover \
+    ./nitro-attestation-prover
+
+RUN mkdir -p \
+    /data/nitro-prover/circuits/groth16 \
+    /data/nitro-prover/tmp
+
+ENV NITRO_GUEST_PROGRAM=/app/verifier/elf/nitro-verifier-guest \
+    DOCKER_API_VERSION=1.41 \
+    SP1_GROTH16_CIRCUIT_PATH=/data/nitro-prover/circuits/groth16 \
+    TMPDIR=/data/nitro-prover/tmp
+
+CMD ["./nitro-attestation-prover"]

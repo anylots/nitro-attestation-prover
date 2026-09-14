@@ -9,9 +9,9 @@ pub enum ProverError {
     #[error("verifier error: {0}")]
     Verifier(#[from] base_proof_tee_nitro_verifier::VerifierError),
 
-    /// RISC Zero proving failed (Bonsai, dev-mode, or local).
-    #[error("risc0 error: {0}")]
-    Risc0(String),
+    /// SP1 proving failed.
+    #[error("sp1 error: {0}")]
+    Sp1(String),
 
     /// Boundless marketplace interaction failed.
     #[error("boundless error: {0}")]
@@ -54,9 +54,9 @@ mod tests {
         ProverError::Verifier(VerifierError::Cbor("decode failed".into())),
         "verifier error: CBOR error: decode failed"
     )]
-    #[case::risc0(
-        ProverError::Risc0("segment fault".into()),
-        "risc0 error: segment fault"
+    #[case::sp1(
+        ProverError::Sp1("segment fault".into()),
+        "sp1 error: segment fault"
     )]
     #[case::boundless(
         ProverError::Boundless("timeout".into()),
@@ -78,7 +78,7 @@ mod tests {
 
     #[rstest]
     fn result_alias_defaults_to_prover_error() {
-        let err: Result<u32> = Err(ProverError::Risc0("fail".into()));
-        assert!(matches!(err, Err(ProverError::Risc0(_))));
+        let err: Result<u32> = Err(ProverError::Sp1("fail".into()));
+        assert!(matches!(err, Err(ProverError::Sp1(_))));
     }
 }

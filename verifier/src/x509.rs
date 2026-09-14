@@ -8,6 +8,8 @@
 //! Includes M-01 audit fixes: `basicConstraints`, `keyUsage`, path length
 //! constraints, subject/issuer chain consistency, and validity period checks.
 
+use std::println;
+
 use alloy_primitives::B256;
 use p384::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use sha2::{Digest, Sha256};
@@ -115,6 +117,10 @@ impl<'a> CertChain<'a> {
         trusted_prefix_len: usize,
         timestamp: u64,
     ) -> Result<(Vec<B256>, Vec<u64>)> {
+        println!(
+            "verifying certificate chain ({} certs, trusted prefix length {trusted_prefix_len})",
+            self.certs.len()
+        );
         if trusted_prefix_len > self.certs.len() {
             return Err(VerifierError::CertificateVerification(format!(
                 "trusted prefix length {trusted_prefix_len} exceeds chain length {}",
@@ -435,7 +441,7 @@ mod tests {
         let (digests, expiries) = chain.verify_chain(0, 1_700_000_000_000).unwrap();
         assert_eq!(digests.len(), 1);
         assert_eq!(expiries.len(), 1);
-        let expected = B256::from_slice(Sha256::digest(&root_der).as_slice());
+        let expected = B256::from_slice(&Sha256::digest(&root_der));
         assert_eq!(digests[0], expected);
         assert_eq!(expiries[0], EXPECTED_EXPIRIES[0]);
     }
@@ -503,15 +509,15 @@ mod tests {
         let (digests, _expiries) = chain.verify_chain(5, 0).unwrap();
 
         // First digest = sha256(root_der).
-        let root_hash = B256::from_slice(Sha256::digest(&full_chain_der[0]).as_slice());
+        let root_hash = B256::from_slice(&Sha256::digest(&full_chain_der[0]));
         assert_eq!(digests[0], root_hash);
 
         // Second digest = sha256(root_hash || sha256(inter1_der)).
-        let inter1_hash = B256::from_slice(Sha256::digest(&full_chain_der[1]).as_slice());
+        let inter1_hash = B256::from_slice(&Sha256::digest(&full_chain_der[1]));
         let mut hasher = Sha256::new();
         hasher.update(root_hash.as_slice());
         hasher.update(inter1_hash.as_slice());
-        let expected = B256::from_slice(hasher.finalize().as_slice());
+        let expected = B256::from_slice(&hasher.finalize());
         assert_eq!(digests[1], expected);
     }
 

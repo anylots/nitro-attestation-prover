@@ -1,70 +1,54 @@
 # Standalone Nitro attestation prover
 
-This workspace provides native verification of the bundled AWS Nitro
-attestation as a test and local RISC Zero Groth16 proving as the main binary.
-The required verifier source, attestation fixture, recursion archive, and
-encoded R0BF guest program are all included, so it does not depend on the Base
-monorepo.
-
-Run the fast host verification test:
-
-```sh
-cargo test --features prove verifies_attestation_on_host -- --nocapture
-```
-
 Run the local Groth16 prover:
 
 ```sh
-RUSTFLAGS="-C target-cpu=native" \
-RUST_LOG="risc0_zkvm=info,risc0_zkp=debug,risc0_circuit_rv32im=info,risc0_circuit_recursion=info" \
-RISC0_PROVER=local \
-RECURSION_SRC_PATH="$PWD/744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849.zip" \
-NITRO_GUEST_PROGRAM="$PWD/nitro-verifier-guest.r0bf" \
-cargo run --profile maxperf \
-  -p base-proof-tee-nitro-attestation-prover \
-  --features prove
-```
-
-Set `NITRO_ATTESTATION=/path/to/raw-attestation.bin` to replace the bundled
-fixture.
-
-### Run after disconnecting SSH
-
-Use the helper scripts to keep the local prover running after the SSH session
-ends:
-
-```sh
-./script/start-prover.sh
-tail -f .run/prover.log
-```
-
-The start script records the process ID in `.run/prover.pid`. Stop the prover
-gracefully with:
-
-```sh
-./script/stop-prover.sh
-```
-
-Environment variables can be supplied when starting it. For example, to use a
-custom attestation and log location:
-
-```sh
-NITRO_ATTESTATION=/path/to/raw-attestation.bin \
-LOG_FILE=/path/to/prover.log \
-./script/start-prover.sh
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
 ```
 
 ## Run with Docker (Ubuntu 24.04)
 
-Build the image on the server so that `target-cpu=native` is optimized for the
-server CPU:
+Build the SP1 base image first, then build the prover image on the server so
+that `target-cpu=native` is optimized for the server CPU:
 
 ```sh
-docker build --tag nitro-attestation-prover .
-docker run --rm nitro-attestation-prover
+docker build \
+  --file Dockerfile.sp1-start \
+  --tag sp1-start \
+  .
+
+docker build \
+  --file Dockerfile.sp1-prover \
+  --tag nitro-attestation-prover \
+  .
+
+# SP1's non-native Groth16 backend starts the Gnark container through the host
+# Docker daemon. This shared directory must have the same absolute path on the
+# host and in the prover container because the daemon resolves bind-mount source
+# paths on the host.
+sudo mkdir -p \
+  /data/nitro-prover/circuits/groth16 \
+  /data/nitro-prover/tmp
+
+docker run --rm \
+  --shm-size=4g \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
+  --env DOCKER_API_VERSION=1.41 \
+  --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  nitro-attestation-prover
 
 docker run -d \
   --name nitro-attestation-prover-run \
+  --shm-size=4g \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
+  --env DOCKER_API_VERSION=1.41 \
+  --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   nitro-attestation-prover
 
 docker logs -f nitro-attestation-prover-run
@@ -77,7 +61,81 @@ To prove a custom raw attestation document, mount it read-only and set
 
 ```sh
 docker run --rm \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
   --volume /path/to/raw-attestation.bin:/data/attestation.bin:ro \
+  --env DOCKER_API_VERSION=1.41 \
   --env NITRO_ATTESTATION=/data/attestation.bin \
   nitro-attestation-prover
+```
+
+Mounting the Docker socket gives the prover container effective root-level
+control of the host. Run only trusted prover images on a dedicated host. The
+host daemon pulls `ghcr.io/succinctlabs/sp1-gnark:v6.1.0` on the first proof;
+pre-pull that image if the runtime host has restricted network access.
+
+
+## Hyperparameter Version 1
+```sh
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  MEMORY_LIMIT=12589934592 \
+  SHARD_SIZE=524288 \
+  ELEMENT_THRESHOLD=87108864 \
+  HEIGHT_THRESHOLD=624288 \
+  TRACE_CHUNK_SLOTS=2 \
+  RAYON_NUM_THREADS=8 \
+  SP1_WORKER_NUM_SPLICING_WORKERS=1 \
+  SP1_WORKER_SPLICING_BUFFER_SIZE=1 \
+  SP1_WORKER_NUMBER_OF_SEND_SPLICE_WORKERS_PER_SPLICE=1 \
+  SP1_WORKER_SEND_SPLICE_INPUT_BUFFER_SIZE_PER_SPLICE=1 \
+  SP1_WORKER_GLOBAL_MEMORY_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_CORE_WORKERS=2 \
+  SP1_WORKER_CORE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_SETUP_WORKERS=1 \
+  SP1_WORKER_SETUP_BUFFER_SIZE=1 \
+  SP1_WORKER_NORMALIZE_PROGRAM_CACHE_SIZE=1 \
+  SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS=1 \
+  SP1_WORKER_PREPARE_REDUCE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS=2 \
+  SP1_WORKER_RECURSION_EXECUTOR_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_PROVER_WORKERS=2 \
+  SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_DEFERRED_WORKERS=1 \
+  SP1_WORKER_DEFERRED_BUFFER_SIZE=1 \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
+```
+## Hyperparameter Version 2
+```sh
+  RUSTFLAGS="-C target-cpu=native -C target-feature=+avx512f" \
+  RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  MEMORY_LIMIT=12589934592 \
+  SHARD_SIZE=524288 \
+  ELEMENT_THRESHOLD=77108864 \
+  HEIGHT_THRESHOLD=624288 \
+  TRACE_CHUNK_SLOTS=1 \
+  RAYON_NUM_THREADS=8 \
+  SP1_WORKER_NUM_SPLICING_WORKERS=1 \
+  SP1_WORKER_SPLICING_BUFFER_SIZE=1 \
+  SP1_WORKER_NUMBER_OF_SEND_SPLICE_WORKERS_PER_SPLICE=1 \
+  SP1_WORKER_SEND_SPLICE_INPUT_BUFFER_SIZE_PER_SPLICE=1 \
+  SP1_WORKER_GLOBAL_MEMORY_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_CORE_WORKERS=1 \
+  SP1_WORKER_CORE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_SETUP_WORKERS=1 \
+  SP1_WORKER_SETUP_BUFFER_SIZE=1 \
+  SP1_WORKER_NORMALIZE_PROGRAM_CACHE_SIZE=1 \
+  SP1_WORKER_NUM_PREPARE_REDUCE_WORKERS=1 \
+  SP1_WORKER_PREPARE_REDUCE_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_EXECUTOR_WORKERS=1 \
+  SP1_WORKER_RECURSION_EXECUTOR_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_RECURSION_PROVER_WORKERS=1 \
+  SP1_WORKER_RECURSION_PROVER_BUFFER_SIZE=1 \
+  SP1_WORKER_NUM_DEFERRED_WORKERS=1 \
+  SP1_WORKER_DEFERRED_BUFFER_SIZE=1 \
+  cargo run --release \
+    -p base-proof-tee-nitro-attestation-prover \
+    --features prove
 ```
