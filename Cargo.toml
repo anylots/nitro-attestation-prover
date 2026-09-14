@@ -48,7 +48,9 @@ tracing-subscriber = { version = "0.3.22", features = [
 ], optional = true }
 serde_json = { version = "1.0", optional = true }
 # ZK / SP1
-sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v6.2.0", optional = true }
+sp1-sdk = { git = "https://github.com/succinctlabs/sp1.git", tag = "v6.2.0", features = [
+    "native-gnark",
+], optional = true }
 sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git", tag = "v6.2.0", optional = true }
 sp1-verifier = { git = "https://github.com/succinctlabs/sp1.git", tag = "v6.2.0", optional = true }
 
