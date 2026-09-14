@@ -25,12 +25,28 @@ docker build \
   --file Dockerfile.sp1-prover \
   --tag nitro-attestation-prover \
   .
-docker run --shm-size=4g -e RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" --rm nitro-attestation-prover
+
+# SP1's non-native Groth16 backend starts the Gnark container through the host
+# Docker daemon. This shared directory must have the same absolute path on the
+# host and in the prover container because the daemon resolves bind-mount source
+# paths on the host.
+sudo mkdir -p \
+  /data/nitro-prover/circuits/groth16 \
+  /data/nitro-prover/tmp
+
+docker run --rm \
+  --shm-size=4g \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
+  --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  nitro-attestation-prover
 
 docker run -d \
   --name nitro-attestation-prover-run \
   --shm-size=4g \
-  -e RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
+  --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   nitro-attestation-prover
 
 docker logs -f nitro-attestation-prover-run
@@ -43,10 +59,17 @@ To prove a custom raw attestation document, mount it read-only and set
 
 ```sh
 docker run --rm \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  --volume /data/nitro-prover:/data/nitro-prover \
   --volume /path/to/raw-attestation.bin:/data/attestation.bin:ro \
   --env NITRO_ATTESTATION=/data/attestation.bin \
   nitro-attestation-prover
 ```
+
+Mounting the Docker socket gives the prover container effective root-level
+control of the host. Run only trusted prover images on a dedicated host. The
+host daemon pulls `ghcr.io/succinctlabs/sp1-gnark:v6.1.0` on the first proof;
+pre-pull that image if the runtime host has restricted network access.
 
 
 ## Hyperparameter Version 1
