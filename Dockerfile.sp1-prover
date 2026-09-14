@@ -17,6 +17,7 @@ RUN mkdir -p \
     /data/nitro-prover/tmp
 
 ENV NITRO_GUEST_PROGRAM=/app/verifier/elf/nitro-verifier-guest \
+    DOCKER_API_VERSION=1.41 \
     SP1_GROTH16_CIRCUIT_PATH=/data/nitro-prover/circuits/groth16 \
     TMPDIR=/data/nitro-prover/tmp
 

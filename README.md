@@ -38,6 +38,7 @@ docker run --rm \
   --shm-size=4g \
   --volume /var/run/docker.sock:/var/run/docker.sock \
   --volume /data/nitro-prover:/data/nitro-prover \
+  --env DOCKER_API_VERSION=1.41 \
   --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   nitro-attestation-prover
 
@@ -46,6 +47,7 @@ docker run -d \
   --shm-size=4g \
   --volume /var/run/docker.sock:/var/run/docker.sock \
   --volume /data/nitro-prover:/data/nitro-prover \
+  --env DOCKER_API_VERSION=1.41 \
   --env RUST_LOG="info,sp1_sdk=info,sp1_prover=debug" \
   nitro-attestation-prover
 
@@ -62,6 +64,7 @@ docker run --rm \
   --volume /var/run/docker.sock:/var/run/docker.sock \
   --volume /data/nitro-prover:/data/nitro-prover \
   --volume /path/to/raw-attestation.bin:/data/attestation.bin:ro \
+  --env DOCKER_API_VERSION=1.41 \
   --env NITRO_ATTESTATION=/data/attestation.bin \
   nitro-attestation-prover
 ```
